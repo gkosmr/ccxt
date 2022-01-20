@@ -1861,11 +1861,23 @@ module.exports = class gateio extends Exchange {
     }
 
     async fetchMyTrades (symbol = undefined, since = undefined, limit = undefined, params = {}) {
-        if (symbol === undefined) {
-            throw new ArgumentsRequired (this.id + ' fetchMyTrades() requires a symbol argument');
+if(params.order_id && !symbol) {
+            throw new ArgumentsRequired (this.id + ' fetchMyTrades() requires a symbol argument when order_id is passed');
         }
+
         await this.loadMarkets ();
-        const market = this.market (symbol);
+
+
+        let type = 'spot';
+        let request = {};
+        let market = undefined;
+
+        if(symbol) {
+            market = this.market (symbol);
+            type = market['type'];
+            request = this.prepareRequest (market);
+        }
+
         //
         //     const request = {
         //         'currency_pair': market['id'],
@@ -1877,20 +1889,22 @@ module.exports = class gateio extends Exchange {
         //         // 'to': this.milliseconds (), // default to current time
         //     };
         //
-        const request = this.prepareRequest (market);
+
         if (limit !== undefined) {
             request['limit'] = limit; // default 100, max 1000
         }
         if (since !== undefined) {
             request['from'] = parseInt (since / 1000);
-            // request['to'] = since + 7 * 24 * 60 * 60;
+            // request['to'] = parseInt (since / 1000 + 7 * 24 * 60 * 60);
         }
-        const method = this.getSupportedMapping (market['type'], {
+        const method = this.getSupportedMapping (type, {
             'spot': 'privateSpotGetMyTrades',
             'margin': 'privateSpotGetMyTrades',
             'swap': 'privateFuturesGetSettleMyTrades',
             'future': 'privateDeliveryGetSettleMyTrades',
         });
+
+
         const response = await this[method] (this.extend (request, params));
         // SPOT
         // [{
