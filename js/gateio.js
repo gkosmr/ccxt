@@ -1975,7 +1975,7 @@ if(params.order_id && !symbol) {
             const milliseconds = timestampString.split ('.');
             timestamp = parseInt (milliseconds[0]);
         }
-        if (market['contract']) {
+        if (market && market['contract']) {
             timestamp = timestamp * 1000;
         }
         const marketId = this.safeString2 (trade, 'currency_pair', 'contract');
