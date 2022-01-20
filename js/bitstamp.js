@@ -28,6 +28,7 @@ module.exports = class bitstamp extends Exchange {
                 'fetchBorrowRates': false,
                 'fetchCurrencies': true,
                 'fetchDepositAddress': true,
+                'fetchDeposits': true,
                 'fetchFundingFees': true,
                 'fetchIndexOHLCV': false,
                 'fetchLedger': true,
@@ -1086,7 +1087,7 @@ module.exports = class bitstamp extends Exchange {
         return this.parseTrades (result, market, since, limit);
     }
 
-    async fetchTransactions (code = undefined, since = undefined, limit = undefined, params = {}) {
+    async fetchTransactionsAndFilterByType (code = undefined, since = undefined, limit = undefined, params = {}, types = []) {        
         await this.loadMarkets ();
         const request = {};
         if (limit !== undefined) {
@@ -1123,45 +1124,58 @@ module.exports = class bitstamp extends Exchange {
         if (code !== undefined) {
             currency = this.currency (code);
         }
-        const transactions = this.filterByArray (response, 'type', [ '0', '1' ], false);
+        const transactions = this.filterByArray (response, 'type', types, false);
         return this.parseTransactions (transactions, currency, since, limit);
     }
 
-    async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
-        await this.loadMarkets ();
-        const request = {};
-        if (since !== undefined) {
-            request['timedelta'] = this.milliseconds () - since;
-        } else {
-            request['timedelta'] = 50000000; // use max bitstamp approved value
-        }
-        const response = await this.privatePostWithdrawalRequests (this.extend (request, params));
-        //
-        //     [
-        //         {
-        //             status: 2,
-        //             datetime: '2018-10-17 10:58:13',
-        //             currency: 'BTC',
-        //             amount: '0.29669259',
-        //             address: 'aaaaa',
-        //             type: 1,
-        //             id: 111111,
-        //             transaction_id: 'xxxx',
-        //         },
-        //         {
-        //             status: 2,
-        //             datetime: '2018-10-17 10:55:17',
-        //             currency: 'ETH',
-        //             amount: '1.11010664',
-        //             address: 'aaaa',
-        //             type: 16,
-        //             id: 222222,
-        //             transaction_id: 'xxxxx',
-        //         },
-        //     ]
-        //
-        return this.parseTransactions (response, undefined, since, limit);
+    async fetchDeposits (code = undefined, since = undefined, limit = undefined, params = {}) {
+        return this.fetchTransactionsAndFilterByType(code, since, limit, params, [ '0' ]);
     }
+
+    // deposits + withdrawals
+    async fetchTransactions (code = undefined, since = undefined, limit = undefined, params = {}) {
+        return this.fetchTransactionsAndFilterByType(code, since, limit, params, [ '0', '1' ]);
+    }
+
+    async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
+        return this.fetchTransactionsAndFilterByType(code, since, limit, params, [ '1' ]);
+    }
+
+    // async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
+    //     await this.loadMarkets ();
+    //     const request = {};
+    //     if (since !== undefined) {
+    //         request['timedelta'] = this.milliseconds () - since;
+    //     } else {
+    //         request['timedelta'] = 50000000; // use max bitstamp approved value
+    //     }
+    //     const response = await this.privatePostWithdrawalRequests (this.extend (request, params));
+    //     //
+    //     //     [
+    //     //         {
+    //     //             status: 2,
+    //     //             datetime: '2018-10-17 10:58:13',
+    //     //             currency: 'BTC',
+    //     //             amount: '0.29669259',
+    //     //             address: 'aaaaa',
+    //     //             type: 1,
+    //     //             id: 111111,
+    //     //             transaction_id: 'xxxx',
+    //     //         },
+    //     //         {
+    //     //             status: 2,
+    //     //             datetime: '2018-10-17 10:55:17',
+    //     //             currency: 'ETH',
+    //     //             amount: '1.11010664',
+    //     //             address: 'aaaa',
+    //     //             type: 16,
+    //     //             id: 222222,
+    //     //             transaction_id: 'xxxxx',
+    //     //         },
+    //     //     ]
+    //     //
+    //     return this.parseTransactions (response, undefined, since, limit);
+    // }
 
     parseTransaction (transaction, currency = undefined) {
         //
