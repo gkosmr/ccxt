@@ -2145,7 +2145,10 @@ if(params.order_id && !symbol) {
         const rawStatus = this.safeString (transaction, 'status');
         const status = this.parseTransactionStatus (rawStatus);
         const address = this.safeString (transaction, 'address');
-        const fee = this.safeNumber (transaction, 'fee');
+        const fee = {
+            feeCost: this.safeNumber (transaction, 'fee'),
+            feeCurrency: code
+        }
         let tag = this.safeString (transaction, 'memo');
         if (tag === '') {
             tag = undefined;
