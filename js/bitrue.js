@@ -1429,21 +1429,41 @@ module.exports = class bitrue extends Exchange {
         }
         const response = await this.v1PrivateGetWithdrawHistory (this.extend (request, params));
         //
-        //     {
-        //         "code": 200,
-        //         "msg": "succ",
-        //         "data": {
-        //             "msg": null,
-        //             "amount": 1000,
-        //             "fee": 1,
-        //             "ctime": null,
-        //             "coin": "usdt_erc20",
-        //             "addressTo": "0x2edfae3878d7b6db70ce4abed177ab2636f60c83"
-        //         }
-        //     }
+        // {
+        //     "code": 200,
+        //     "msg": "succ",
+        //     "data": [
+        //                 {
+        //                     "symbol": "XRP",
+        //                     "amount": "261.3361000000000000",
+        //                     "fee": "0.0E-15",
+        //                     "createdAt": 1548816979000,
+        //                     "updatedAt": 1548816999000,
+        //                     "addressFrom": "",
+        //                     "addressTo": "raLPjTYeGezfdb6crXZzcC8RkLBEwbBHJ5_18113641",
+        //                     "txid": "86D6EB68A7A28938BCE06BD348F8C07DEF500C5F7FE92069EF8C0551CE0F2C7D",
+        //                     "confirmations": 8,
+        //                     "status": 1,
+        //                     "tagType": "Tag"
+        //                 },
+        //                 {
+        //                     "symbol": "XRP",
+        //                     "amount": "20.0000000000000000",
+        //                     "fee": "0.0E-15",
+        //                     "createdAt": 1544669393000,
+        //                     "updatedAt": 1544669413000,
+        //                     "addressFrom": "",
+        //                     "addressTo": "raLPjTYeGezfdb6crXZzcC8RkLBEwbBHJ5_18113641",
+        //                     "txid": "515B23E1F9864D3AF7F5B4C4FCBED784BAE861854FAB95F4031922B6AAEFC7AC",
+        //                     "confirmations": 7,
+        //                     "status": 1,
+        //                     "tagType": "Tag"
+        //                 }
+        //             ]
+        // }
         //
-        const data = this.safeValue (response, 'data', {});
-        return this.parseTransaction (data, currency);
+        const data = this.safeValue (response, 'data', []);
+        return this.parseTransactions (data, currency, since, limit);
     }
 
     parseTransactionStatusByType (status, type = undefined) {
