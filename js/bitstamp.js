@@ -1087,6 +1087,11 @@ module.exports = class bitstamp extends Exchange {
         return this.parseTrades (result, market, since, limit);
     }
 
+    async fetchAllTransactions (params = {}) {        
+        await this.loadMarkets ();
+        return this.parseObjects ( await this.privatePostUserTransactions (params) );
+    }
+
     async fetchTransactionsAndFilterByType (code = undefined, since = undefined, limit = undefined, params = {}, types = []) {        
         await this.loadMarkets ();
         const request = {};
@@ -1126,6 +1131,20 @@ module.exports = class bitstamp extends Exchange {
         }
         const transactions = this.filterByArray (response, 'type', types, false);
         return this.parseTransactions (transactions, currency, since, limit);
+    }
+
+    parseObjects (objects) {
+        return Object.values (objects || []).map ((obj) => {
+                if(obj.type == '2') {   // trade
+                    return this.parseTrade (obj);
+                } else if(obj.type == '0' || obj.type == '1') {     // deposit, withdrawal
+                    return this.parseTransaction (obj);
+                } else {
+                    // TODO
+                    return {};
+                }
+            }
+        );
     }
 
     async fetchDeposits (code = undefined, since = undefined, limit = undefined, params = {}) {
