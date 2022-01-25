@@ -817,7 +817,7 @@ module.exports = class kraken extends Exchange {
         const account = undefined;
         const referenceId = this.safeString (item, 'refid');
         const referenceAccount = undefined;
-        const type = this.parseLedgerEntryType (this.safeString (item, 'type'));
+        const type = this.safeString (item, 'type');
         const code = this.safeCurrencyCode (this.safeString (item, 'asset'), currency);
         let amount = this.safeNumber (item, 'amount');
         if (amount < 0) {
