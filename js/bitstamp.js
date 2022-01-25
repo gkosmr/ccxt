@@ -1137,11 +1137,11 @@ module.exports = class bitstamp extends Exchange {
         return Object.values (objects || []).map ((obj) => {
                 if(obj.type == '2') {   // trade
                     return this.parseTrade (obj);
-                } else if(obj.type == '0' || obj.type == '1') {     // deposit, withdrawal
+                } else if(obj.type == '0' || obj.type == '1' || obj.type == '14') {     // deposit, withdrawal, subaccount transfer
                     return this.parseTransaction (obj);
                 } else {
                     // TODO
-                    return {};
+                    return { info: obj };
                 }
             }
         );
@@ -1252,8 +1252,14 @@ module.exports = class bitstamp extends Exchange {
             amount = this.safeNumber (transaction, currencyId, amount);
             feeCurrency = code;
         }
+        let direction = undefined;
         if (amount !== undefined) {
             // withdrawals have a negative amount
+            if(amount > 0) {
+                direction = 'in';
+            } else {
+                direction = 'out';
+            }
             amount = Math.abs (amount);
         }
         let status = 'ok';
@@ -1268,6 +1274,8 @@ module.exports = class bitstamp extends Exchange {
                 type = 'deposit';
             } else if (rawType === '1') {
                 type = 'withdrawal';
+            } else if(rawType == '14') {
+                type = 'transfer';
             }
         } else {
             // from fetchWithdrawals
@@ -1316,6 +1324,7 @@ module.exports = class bitstamp extends Exchange {
             'status': status,
             'updated': undefined,
             'fee': fee,
+            'direction': direction
         };
     }
 
