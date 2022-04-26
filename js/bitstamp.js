@@ -93,6 +93,7 @@ module.exports = class bitstamp extends Exchange {
                         'bch_withdrawal/',
                         'bch_address/',
                         'user_transactions/',
+                        'crypto-transactions/',
                         'user_transactions/{pair}/',
                         'open_orders/all/',
                         'open_orders/{pair}/',
@@ -1090,6 +1091,34 @@ module.exports = class bitstamp extends Exchange {
     async fetchAllTransactions (params = {}) {        
         await this.loadMarkets ();
         return this.parseObjects ( await this.privatePostUserTransactions (params) );
+    }
+    
+    async fetchCryptoTransactions(params = {}) {
+        await this.loadMarkets ();
+        let records = await this.privatePostCryptoTransactions(params);
+        let txes = [];
+        for(let obj of records.withdrawals) {
+            txes.push({
+                type: 'withdrawal',
+                currency: obj.currency,
+                hash: obj.txid,
+                amount: obj.amount,
+                address: obj.destinationAddress,
+                unix: obj.datetime*1000
+            });
+        }
+
+        for(let obj of records.deposits) {
+            txes.push({
+                type: 'deposit',
+                currency: obj.currency,
+                hash: obj.txid,
+                amount: obj.amount,
+                address: obj.destinationAddress,
+                unix: obj.datetime*1000
+            });
+        }
+        return txes;
     }
 
     async fetchTransactionsAndFilterByType (code = undefined, since = undefined, limit = undefined, params = {}, types = []) {        
