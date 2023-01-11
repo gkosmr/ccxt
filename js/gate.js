@@ -3041,7 +3041,10 @@ module.exports = class gate extends Exchange {
         const rawStatus = this.safeString (transaction, 'status');
         const status = this.parseTransactionStatus (rawStatus);
         const address = this.safeString (transaction, 'address');
-        const fee = this.safeNumber (transaction, 'fee');
+        const fee = {
+            feeCost: this.safeNumber (transaction, 'fee'),
+            feeCurrency: code
+        };
         const tag = this.safeString (transaction, 'memo');
         const timestamp = this.safeTimestamp (transaction, 'timestamp');
         return {

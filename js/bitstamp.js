@@ -43,6 +43,7 @@ module.exports = class bitstamp extends Exchange {
                 'fetchBorrowRatesPerSymbol': false,
                 'fetchCurrencies': true,
                 'fetchDepositAddress': true,
+                'fetchDeposits': true,
                 'fetchDepositWithdrawFee': 'emulated',
                 'fetchDepositWithdrawFees': true,
                 'fetchFundingHistory': false,
@@ -1445,7 +1446,12 @@ module.exports = class bitstamp extends Exchange {
         return this.parseTrades (result, market, since, limit);
     }
 
-    async fetchTransactions (code = undefined, since = undefined, limit = undefined, params = {}) {
+    async fetchAllTransactions (params = {}) {        
+        await this.loadMarkets ();
+        return this.parseObjects ( await this.privatePostUserTransactions (params) );
+    }
+
+    async fetchTransactionsAndFilterByType (code = undefined, since = undefined, limit = undefined, params = {}, types = []) {
         /**
          * @method
          * @name bitstamp#fetchTransactions
@@ -1492,54 +1498,35 @@ module.exports = class bitstamp extends Exchange {
         if (code !== undefined) {
             currency = this.currency (code);
         }
-        const transactions = this.filterByArray (response, 'type', [ '0', '1' ], false);
+        const transactions = this.filterByArray (response, 'type', types, false);
         return this.parseTransactions (transactions, currency, since, limit);
     }
 
+    parseObjects (objects) {
+        return Object.values (objects || []).map ((obj) => {
+                if(obj.type == '2') {   // trade
+                    return this.parseTrade (obj);
+                } else if(obj.type == '0' || obj.type == '1' || obj.type == '14') {     // deposit, withdrawal, subaccount transfer
+                    return this.parseTransaction (obj);
+                } else {
+                    // TODO
+                    return { info: obj };
+                }
+            }
+        );
+    }
+
+    async fetchDeposits (code = undefined, since = undefined, limit = undefined, params = {}) {
+        return this.fetchTransactionsAndFilterByType(code, since, limit, params, [ '0' ]);
+    }
+
+    // deposits + withdrawals
+    async fetchTransactions (code = undefined, since = undefined, limit = undefined, params = {}) {
+        return this.fetchTransactionsAndFilterByType(code, since, limit, params, [ '0', '1' ]);
+    }
+
     async fetchWithdrawals (code = undefined, since = undefined, limit = undefined, params = {}) {
-        /**
-         * @method
-         * @name bitstamp#fetchWithdrawals
-         * @description fetch all withdrawals made from an account
-         * @param {string|undefined} code unified currency code
-         * @param {int|undefined} since the earliest time in ms to fetch withdrawals for
-         * @param {int|undefined} limit the maximum number of withdrawals structures to retrieve
-         * @param {object} params extra parameters specific to the bitstamp api endpoint
-         * @returns {[object]} a list of [transaction structures]{@link https://docs.ccxt.com/en/latest/manual.html#transaction-structure}
-         */
-        await this.loadMarkets ();
-        const request = {};
-        if (since !== undefined) {
-            request['timedelta'] = this.milliseconds () - since;
-        } else {
-            request['timedelta'] = 50000000; // use max bitstamp approved value
-        }
-        const response = await this.privatePostWithdrawalRequests (this.extend (request, params));
-        //
-        //     [
-        //         {
-        //             status: 2,
-        //             datetime: '2018-10-17 10:58:13',
-        //             currency: 'BTC',
-        //             amount: '0.29669259',
-        //             address: 'aaaaa',
-        //             type: 1,
-        //             id: 111111,
-        //             transaction_id: 'xxxx',
-        //         },
-        //         {
-        //             status: 2,
-        //             datetime: '2018-10-17 10:55:17',
-        //             currency: 'ETH',
-        //             amount: '1.11010664',
-        //             address: 'aaaa',
-        //             type: 16,
-        //             id: 222222,
-        //             transaction_id: 'xxxxx',
-        //         },
-        //     ]
-        //
-        return this.parseTransactions (response, undefined, since, limit);
+        return this.fetchTransactionsAndFilterByType(code, since, limit, params, [ '1' ]);
     }
 
     parseTransaction (transaction, currency = undefined) {
@@ -1598,8 +1585,14 @@ module.exports = class bitstamp extends Exchange {
             amount = this.safeString (transaction, currencyId, amount);
             feeCurrency = code;
         }
+        let direction = undefined;
         if (amount !== undefined) {
             // withdrawals have a negative amount
+            if(Precise.stringGt(amount, '0')) {
+                direction = 'in';
+            } else {
+                direction = 'out';
+            }
             amount = Precise.stringAbs (amount);
         }
         let status = 'ok';
@@ -1614,6 +1607,8 @@ module.exports = class bitstamp extends Exchange {
                 type = 'deposit';
             } else if (rawType === '1') {
                 type = 'withdrawal';
+            } else if (rawType === '14') {
+                type = 'transfer';
             }
         } else {
             // from fetchWithdrawals
@@ -1662,6 +1657,7 @@ module.exports = class bitstamp extends Exchange {
             'status': status,
             'updated': undefined,
             'fee': fee,
+            'direction': direction
         };
     }
 
