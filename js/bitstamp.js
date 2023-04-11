@@ -148,6 +148,7 @@ module.exports = class bitstamp extends Exchange {
                         'liquidation_address/info/': 1,
                         'btc_unconfirmed/': 1,
                         'websockets_token/': 1,
+                        'crypto-transactions/': 1,
                         // individual coins
                         'btc_withdrawal/': 1,
                         'btc_address/': 1,
@@ -1514,6 +1515,32 @@ module.exports = class bitstamp extends Exchange {
                 }
             }
         );
+    }
+
+    async fetchCryptoTransactions(params = {}) {
+        await this.loadMarkets ();
+        let response =  await this.privatePostCryptoTransactions(params);
+        let deposits = (response.deposits || []).map( obj => { 
+            return {
+                type: 'deposit',
+                unix: Number(obj.datetime) * 1000,
+                currency: obj.currency,
+                amount: obj.amount,
+                hash: obj.txid,
+                destinationAddress: obj.destinationAddress
+            }
+        });
+        let withdrawals = (response.withdrawals || []).map( obj => { 
+            return {
+                type: 'withdrawal',
+                unix: Number(obj.datetime) * 1000,
+                currency: obj.currency,
+                amount: obj.amount,
+                hash: obj.txid,
+                destinationAddress: obj.destinationAddress
+            }
+        });
+        return deposits.concat(withdrawals);
     }
 
     async fetchDeposits (code = undefined, since = undefined, limit = undefined, params = {}) {
